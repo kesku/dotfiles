@@ -1,0 +1,39 @@
+# ~/.dotfiles/starship/starship.toml
+
+add_newline = false
+
+format = """
+$username\
+$hostname\
+$directory\
+$git_branch\
+$git_status\
+$nodejs\
+$docker_context\
+$cmd_duration\
+$line_break\
+$character
+"""
+
+[directory]
+style = "bold blue"
+truncation_length = 3
+truncate_to_repo = true
+
+[git_branch]
+symbol = " "
+style = "bold purple"
+
+[nodejs]
+symbol = " "
+format = "[$symbol($version )]($style)"
+style = "green"
+
+[docker_context]
+symbol = " "
+format = "[$symbol$context ]($style)"
+style = "blue"
+
+[character]
+success_symbol = "[❯](bold green)"
+error_symbol = "[❯](bold red)"
