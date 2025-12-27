@@ -1,0 +1,5 @@
+# local / secrets
+zsh/local.zsh
+
+# OS junk
+.DS_Store
