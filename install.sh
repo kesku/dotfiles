@@ -17,9 +17,8 @@ if [ ! -d "$HOME/.oh-my-zsh" ]; then
     "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
 fi
 
-if [ ! -f "$HOME/.zshrc" ]; then
-  echo "Creating ~/.zshrc"
-  cat > "$HOME/.zshrc" <<'EOF'
+echo "Writing ~/.zshrc"
+cat > "$HOME/.zshrc" <<'EOF'
 export ZSH="$HOME/.oh-my-zsh"
 
 ZSH_THEME=""
@@ -38,8 +37,10 @@ source "$ZSH/oh-my-zsh.sh"
 export STARSHIP_CONFIG="$HOME/.dotfiles/starship/starship.toml"
 command -v starship >/dev/null 2>&1 && eval "$(starship init zsh)"
 EOF
-else
-  echo "~/.zshrc already exists, skipping"
+
+if ! command -v starship >/dev/null 2>&1; then
+  echo "Installing starship"
+  curl -fsSL https://starship.rs/install.sh | sh -s -- -y
 fi
 
 if [ "$SHELL" != "$(command -v zsh)" ]; then
