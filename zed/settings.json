@@ -1,0 +1,33 @@
+{
+  "base_keymap": "VSCode",
+  "buffer_font_size": 14,
+  "ui_font_size": 14,
+  "theme": "VSCode Dark Modern",
+  "icon_theme": "VSCode Icons for Zed (Dark)",
+  "auto_install_extensions": {
+    "vscode-icons": true,
+    "vscode-dark-modern": true
+  },
+  "project_panel": {
+    "dock": "left",
+    "default_width": 280,
+    "entry_spacing": "standard",
+    "file_icons": true,
+    "git_status": true
+  },
+  "git_panel": {
+    "dock": "left",
+    "default_width": 340,
+    "file_icons": true,
+    "show_count_badge": true,
+    "entry_primary_click_action": "file_diff"
+  },
+  "terminal": {
+    "dock": "bottom"
+  },
+  "tabs": {
+    "file_icons": true,
+    "git_status": true,
+    "close_position": "right"
+  }
+}

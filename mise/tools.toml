@@ -1,0 +1,14 @@
+[tools]
+node = "24.22.3"
+"aqua:pnpm/pnpm" = "10.34.9"
+bun = "1.4.4"
+python = "3.14.10"
+"aqua:astral-sh/uv" = "0.13.9"
+rust = { version = "1.100.0", profile = "minimal" }
+
+[settings]
+idiomatic_version_file_enable_tools = ["node", "python", "rust", "bun"]
+
+[settings.rust]
+cargo_home = "~/.local/share/mise/cargo"
+rustup_home = "~/.local/share/mise/rustup"
