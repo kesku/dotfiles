@@ -22,7 +22,7 @@ On Windows:
 py -3 scripts/configure.py powershell git zed
 ```
 
-Pick: `bash`, `zsh`, `powershell`, `git`, `zed`, `mise`
+Pick: `bash`, `zsh`, `powershell`, `git`, `zed`, `mise`, `agents`
 
 Run shell setup in its own environment inc WSL
 
@@ -84,6 +84,25 @@ mise install
 This installs the tools defined in `mise/tools.toml`. Projects can still use their own version files
 
 Rust uses separate Cargo and rustup directories and still needs a native linker
+
+## Agents
+
+Skills for Claude Code and Codex on macOS/Linux. Skills in `agents/skills/` link into `~/.agents/skills` and from there into `~/.claude/skills` and `~/.codex/skills`, so `git pull` updates them
+
+Install [impeccable](https://github.com/pbakaus/impeccable) at the version in `agents/impeccable/version` separately, with its design hook:
+
+```sh
+DO_NOT_TRACK=1 npx -y impeccable@$(cat agents/impeccable/version) install -y --providers=claude,codex --scope=global
+```
+
+Then:
+
+```sh
+./install.sh agents
+./install.sh agents --apply
+```
+
+This turns off impeccable telemetry and links its Codex skill into `~/.codex/skills`. In Codex, approve the impeccable hook in `/hooks`
 
 ## Checks
 

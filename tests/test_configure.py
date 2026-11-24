@@ -22,7 +22,7 @@ class ConfigurationTests(unittest.TestCase):
         self.home.mkdir()
         self.checkout = Path(self.directory.name) / 'checkout with spaces'
         self.checkout.mkdir()
-        for name in ['scripts', 'shell', 'zsh', 'bash', 'powershell', 'git', 'zed', 'mise', 'starship']:
+        for name in ['scripts', 'shell', 'zsh', 'bash', 'powershell', 'git', 'zed', 'mise', 'starship', 'agents']:
             shutil.copytree(ROOT / name, self.checkout / name, ignore=shutil.ignore_patterns('__pycache__', 'local.zsh'))
 
     def tearDown(self):
@@ -174,6 +174,28 @@ class ConfigurationTests(unittest.TestCase):
         self.run_configure('--platform', 'windows', '--apply', components=('bash',), expected=2)
         self.run_configure('--apply', components=('powershell',), expected=2)
         self.assertEqual(list(self.home.iterdir()), [])
+
+    @unittest.skipIf(os.name == 'nt', 'agents is Unix-only')
+    def test_agents_links_skills_and_disables_impeccable_telemetry(self):
+        config = self.home / '.impeccable/config.json'
+        config.parent.mkdir()
+        config.write_text('{"account": "kept"}\n')
+        self.run_configure('--apply', components=('agents',))
+        self.assertEqual(json.loads(config.read_text()), {'account': 'kept', 'telemetry': False})
+        skill = self.home / '.agents/skills/pr-review-guide'
+        self.assertEqual(os.readlink(skill), str(self.checkout.resolve() / 'agents/skills/pr-review-guide'))
+        for agent in ['.claude', '.codex']:
+            self.assertTrue((self.home / agent / 'skills/pr-review-guide/SKILL.md').is_file())
+        self.assertEqual(os.readlink(self.home / '.codex/skills/impeccable'), '../../.agents/skills/impeccable')
+        self.assertNotIn('LINK', self.run_configure('--apply', components=('agents',)).stdout)
+        self.run_configure('--platform', 'windows', components=('agents',), expected=2)
+
+    @unittest.skipIf(os.name == 'nt', 'agents is Unix-only')
+    def test_agents_refuses_unmanaged_skill_without_partial_writes(self):
+        (self.home / '.claude/skills/pr-review-guide').mkdir(parents=True)
+        self.run_configure('--apply', components=('agents',), expected=2)
+        self.assertFalse((self.home / '.impeccable').exists())
+        self.assertFalse((self.home / '.agents').exists())
 
     def test_zsh_only_does_not_configure_bash_or_git(self):
         self.run_configure('--apply', components=('zsh',))

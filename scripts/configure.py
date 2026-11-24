@@ -53,6 +53,36 @@ class Change(NamedTuple):
             temporary.unlink(missing_ok=True)
 
 
+class Link(NamedTuple):
+    path: Path
+    target: str
+
+    def current(self):
+        return self.path.is_symlink() and os.readlink(self.path) == self.target
+
+    def check(self):
+        if not self.current() and os.path.lexists(self.path):
+            raise ValueError('refusing to replace unmanaged path: ' + str(self.path))
+
+    def write(self):
+        self.check()
+        if not self.current():
+            self.path.parent.mkdir(parents=True, exist_ok=True)
+            os.symlink(self.target, self.path, target_is_directory=True)
+
+
+def agent_links(home):
+    # Codex reads ~/.codex/skills; ~/.agents/skills is the canonical copy.
+    links = []
+    for skill in sorted(p.name for p in (ROOT / 'agents/skills').iterdir() if p.is_dir()):
+        links.append(Link(home / '.agents/skills' / skill, str(ROOT / 'agents/skills' / skill)))
+        for agent in ['.claude', '.codex']:
+            links.append(Link(home / agent / 'skills' / skill, '../../.agents/skills/' + skill))
+    # The impeccable installer writes ~/.agents/skills/impeccable for Codex.
+    links.append(Link(home / '.codex/skills/impeccable', '../../.agents/skills/impeccable'))
+    return links
+
+
 def managed(old, body):
     newline = '\r\n' if '\r\n' in old else '\n'
     block = newline.join([BEGIN, *body.splitlines(), END]) + newline
@@ -94,6 +124,8 @@ def destinations(args, home):
         raise ValueError('use powershell on Windows; configure Unix shells inside their Unix environment')
     if args.platform != 'windows' and 'powershell' in components:
         raise ValueError('powershell profile placement requires --platform windows')
+    if args.platform == 'windows' and 'agents' in components:
+        raise ValueError('agents is not supported on Windows')
     changes = []
     if 'powershell' in components:
         body = '\n'.join([
@@ -130,13 +162,15 @@ def destinations(args, home):
         changes.append((home / '.gitconfig', body, 'block', False))
     if 'zed' in components:
         changes.append((zed_settings_path(home, args.platform), (ROOT / 'zed/settings.json').read_text(), 'zed', False))
+    if 'agents' in components:
+        changes.append((home / '.impeccable/config.json', {'telemetry': False}, 'json', False))
     return changes
 
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--platform', choices=['macos', 'linux', 'windows'], default=PLATFORM)
-    parser.add_argument('components', nargs='+', choices=['bash', 'zsh', 'powershell', 'git', 'zed', 'mise'])
+    parser.add_argument('components', nargs='+', choices=['bash', 'zsh', 'powershell', 'git', 'zed', 'mise', 'agents'])
     parser.add_argument('--home', type=Path, default=Path.home(), help='destination home; use a temporary directory for staging')
     parser.add_argument('--documents', help='Windows Documents folder override (supports redirected Documents)')
     parser.add_argument('--apply', action='store_true', help='write files; without this flag only preview')
@@ -156,6 +190,11 @@ def main(argv=None):
             old = old_bytes.decode('utf-8-sig')
             if mode == 'zed':
                 content = json.dumps(merge(parse(body), parse(old) if old.strip() else {}), indent=2) + '\n'
+            elif mode == 'json':
+                current = json.loads(old) if old.strip() else {}
+                if not isinstance(current, dict):
+                    raise ValueError('expected a JSON object: ' + str(target))
+                content = json.dumps({**current, **body}, indent=2) + '\n'
             else:
                 content = managed(old, body) if mode == 'block' else body
             if shell and re.search(r'starship\s+init|direnv\s+hook|nvm\.sh|_bun|oh-my-zsh\.sh|zsh-autosuggestions|zsh-syntax-highlighting|\.dotfiles/zsh/', MANAGED_BLOCK.sub('', old)):
@@ -168,6 +207,10 @@ def main(argv=None):
             changed = encoded != old_bytes
             print(('UPDATE' if original is not None else 'CREATE') if changed else 'UNCHANGED', target)
             plans.append(Change(target, original, encoded))
+        links = agent_links(home) if 'agents' in args.components else []
+        for link in links:
+            link.check()
+            print('UNCHANGED' if link.current() else 'LINK', link.path, '->', link.target)
     except (OSError, UnicodeError, ValueError) as error:
         print('Cannot prepare configuration:', error, file=sys.stderr)
         return 2
@@ -181,9 +224,13 @@ def main(argv=None):
     try:
         for change in plans:
             change.check_original()
+        for link in links:
+            link.check()
         for change in plans:
             if change.content != (change.original or b''):
                 change.write()
+        for link in links:
+            link.write()
     except (OSError, ValueError) as error:
         print('Cannot apply configuration:', error, file=sys.stderr)
         return 2
